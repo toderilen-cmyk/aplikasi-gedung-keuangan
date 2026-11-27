@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIMPEG - Gedung Keuangan | Sistem Informasi Kepegawaian Cloud</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white !important; }
+      .shadow-sm, .shadow-md, .shadow-lg { box-shadow: none !important; }
+    }
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+  <!-- LOGIN OVERLAY -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+      <div class="bg-gradient-to-r from-blue-900 via-blue-800 to-amber-600 p-6 text-white text-center">
+        <div class="w-16 h-16 bg-white/15 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur">
+          <i class="fa-solid fa-landmark text-3xl text-amber-300"></i>
+        </div>
+        <h1 class="text-xl font-bold tracking-tight">GEDUNG KEUANGAN</h1>
+        <p class="text-xs text-blue-100 mt-1">Sistem Informasi Kepegawaian Terpadu (Cloud Edition)</p>
+      </div>
+      <form id="loginForm" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Username / NIP Admin</label>
+          <input type="text" id="loginUser" value="admin.keuangan" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-700 focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Password</label>
+          <input type="password" id="loginPass" value="kemenkeu2026" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-700 focus:outline-none text-sm">
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+          <i class="fa-solid fa-cloud-check mr-1"></i> Terhubung ke Cloud Storage & GitHub CI/CD Sync. Akun demo sudah terisi otomatis.
+        </div>
+        <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg transition shadow-md">
+          <i class="fa-solid fa-right-to-bracket mr-2"></i>Masuk ke Aplikasi Gedung Keuangan
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN APP LAYOUT -->
+  <div class="min-h-screen flex flex-col">
+    <!-- TOP NAVBAR -->
+    <header class="bg-gradient-to-r from-blue-950 via-blue-900 to-blue-800 text-white shadow-lg no-print sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="bg-amber-500 text-blue-950 p-2 rounded-xl font-bold shadow">
+            <i class="fa-solid fa-building-columns text-lg"></i>
+          </div>
+          <div>
+            <span class="font-bold text-lg tracking-wide">GEDUNG KEUANGAN</span>
+            <span class="hidden sm:inline-block ml-2 text-xs bg-blue-700/80 border border-blue-500/50 px-2 py-0.5 rounded-full text-amber-300">
+              <i class="fa-solid fa-cloud mr-1"></i>Cloud Active
+            </span>
+          </div>
+        </div>
+        <nav class="flex items-center space-x-1 sm:space-x-2">
+          <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn bg-white/15 text-white px-3 py-2 rounded-lg text-sm font-medium transition">
+            <i class="fa-solid fa-chart-pie mr-1.5"></i>Dashboard
+          </button>
+          <button onclick="switchTab('pegawai')" id="nav-pegawai" class="nav-btn text-blue-100 hover:bg-white/10 px-3 py-2 rounded-lg text-sm font-medium transition">
+            <i class="fa-solid fa-users mr-1.5"></i>Data Pegawai (<span id="badgeCount">55</span>)
+          </button>
+          <button onclick="switchTab('laporan')" id="nav-laporan" class="nav-btn text-blue-100 hover:bg-white/10 px-3 py-2 rounded-lg text-sm font-medium transition">
+            <i class="fa-solid fa-file-pdf mr-1.5"></i>Cetak Laporan PDF
+          </button>
+          <button onclick="logout()" class="ml-2 bg-rose-600/90 hover:bg-rose-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition" title="Keluar">
+            <i class="fa-solid fa-power-off"></i>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- CONTENT CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+      <!-- TAB 1: DASHBOARD -->
+      <section id="tab-dashboard" class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900">Dashboard Kepegawaian Gedung Keuangan</h2>
+            <p class="text-sm text-slate-500">Ringkasan data Aparatur Sipil Negara (ASN) lintas unit kerja Kementerian Keuangan</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="resetDefaultData()" class="px-3 py-2 text-xs font-medium bg-white border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-700">
+              <i class="fa-solid fa-rotate mr-1"></i>Reset 55 Data Default
+            </button>
+            <button onclick="switchTab('laporan')" class="px-4 py-2 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-blue-950 rounded-lg shadow-sm">
+              <i class="fa-solid fa-print mr-1.5"></i>Buka Menu Cetak PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI CARDS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-xs font-semibold uppercase text-slate-400">Total Pegawai</p>
+                <h3 id="kpiTotal" class="text-3xl font-bold text-blue-900 mt-1">55</h3>
+              </div>
+              <div class="p-2.5 bg-blue-50 text-blue-700 rounded-lg"><i class="fa-solid fa-users text-lg"></i></div>
+            </div>
+            <p class="text-xs text-emerald-600 mt-3 font-medium"><i class="fa-solid fa-circle-check mr-1"></i>Memenuhi standar min. 50 data</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-xs font-semibold uppercase text-slate-400">Pegawai PNS / PPPK</p>
+                <h3 id="kpiStatus" class="text-2xl font-bold text-slate-800 mt-1">44 / 11</h3>
+              </div>
+              <div class="p-2.5 bg-amber-50 text-amber-600 rounded-lg"><i class="fa-solid fa-id-badge text-lg"></i></div>
+            </div>
+            <p class="text-xs text-slate-500 mt-3">Komposisi Status Kepegawaian</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-xs font-semibold uppercase text-slate-400">Unit Kerja Vertikal</p>
+                <h3 id="kpiUnit" class="text-3xl font-bold text-slate-800 mt-1">7</h3>
+              </div>
+              <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg"><i class="fa-solid fa-sitemap text-lg"></i></div>
+            </div>
+            <p class="text-xs text-slate-500 mt-3">KPP, KPPN, KPKNL, Kanwil, BC</p>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-xs font-semibold uppercase text-slate-400">Total Belanja Pegawai/Bln</p>
+                <h3 id="kpiGaji" class="text-xl font-bold text-emerald-700 mt-1">Rp 0</h3>
+              </div>
+              <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg"><i class="fa-solid fa-rupiah-sign text-lg"></i></div>
+            </div>
+            <p class="text-xs text-slate-500 mt-3">Gaji Pokok + Tunjangan Kinerja</p>
+          </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-700 mb-4">Sebaran Pegawai per Unit Kerja Gedung Keuangan</h3>
+            <canvas id="unitChart" height="210"></canvas>
+          </div>
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-700 mb-4">Distribusi Golongan Kepangkatan ASN</h3>
+            <canvas id="golChart" height="210"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: DATA PEGAWAI (CRUD) -->
+      <section id="tab-pegawai" class="hidden space-y-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-900">Master Data Pegawai Gedung Keuangan</h2>
+            <p class="text-sm text-slate-500">Kelola data pegawai (Tambah, Ubah, Hapus, Cari, & Filter Real-time)</p>
+          </div>
+          <button onclick="openModalPegawai()" class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition">
+            <i class="fa-solid fa-user-plus mr-2"></i>Tambah Pegawai Baru
+          </button>
+        </div>
+
+        <!-- FILTER & SEARCH -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="md:col-span-2 relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            <input type="text" id="searchInput" oninput="renderTable()" placeholder="Cari berdasarkan NIP, Nama, Jabatan, atau Email..." class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-700 focus:outline-none">
+          </div>
+          <div>
+            <select id="filterUnit" onchange="renderTable()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+              <option value="">Semua Unit Kerja</option>
+              <option value="KPP Pratama Kupang">KPP Pratama Kupang</option>
+              <option value="KPPN Kupang">KPPN Kupang</option>
+              <option value="KPKNL Kupang">KPKNL Kupang</option>
+              <option value="Kanwil DJPb Provinsi NTT">Kanwil DJPb Provinsi NTT</option>
+              <option value="Kanwil DJKN Bali dan Nusa Tenggara">Kanwil DJKN Bali dan Nusa Tenggara</option>
+              <option value="KPPBC Tipe Madya Pabean C Kupang">KPPBC Tipe Madya Pabean C Kupang</option>
+              <option value="Sekretariat Bersama Gedung Keuangan">Sekretariat Bersama Gedung Keuangan</option>
+            </select>
+          </div>
+          <div>
+            <select id="filterStatus" onchange="renderTable()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+              <option value="">Semua Status</option>
+              <option value="PNS">PNS</option>
+              <option value="PPPK">PPPK</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- DATA TABLE -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100 border-b border-slate-200 text-xs font-bold uppercase text-slate-600">
+                  <th class="py-3.5 px-4">No</th>
+                  <th class="py-3.5 px-4">NIP & Nama Pegawai</th>
+                  <th class="py-3.5 px-4">Pangkat / Gol</th>
+                  <th class="py-3.5 px-4">Jabatan & Unit Kerja</th>
+                  <th class="py-3.5 px-4">Status</th>
+                  <th class="py-3.5 px-4">Total Penghasilan</th>
+                  <th class="py-3.5 px-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="pegawaiTableBody" class="divide-y divide-slate-200 text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: CETAK LAPORAN PDF DARI APLIKASI -->
+      <section id="tab-laporan" class="hidden space-y-5">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">Generator Laporan Resmi Gedung Keuangan</h2>
+            <p class="text-sm text-slate-500">Pilih filter unit kerja lalu unduh langsung sebagai dokumen PDF resmi siap cetak.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="reportUnitFilter" onchange="renderReportPreview()" class="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+              <option value="">Seluruh Unit Gedung Keuangan</option>
+              <option value="KPP Pratama Kupang">KPP Pratama Kupang</option>
+              <option value="KPPN Kupang">KPPN Kupang</option>
+              <option value="KPKNL Kupang">KPKNL Kupang</option>
+              <option value="Kanwil DJPb Provinsi NTT">Kanwil DJPb Provinsi NTT</option>
+              <option value="Kanwil DJKN Bali dan Nusa Tenggara">Kanwil DJKN Bali dan Nusa Tenggara</option>
+              <option value="KPPBC Tipe Madya Pabean C Kupang">KPPBC Tipe Madya Pabean C Kupang</option>
+              <option value="Sekretariat Bersama Gedung Keuangan">Sekretariat Bersama Gedung Keuangan</option>
+            </select>
+            <button onclick="downloadPDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition">
+              <i class="fa-solid fa-file-arrow-down mr-1.5"></i>Download PDF Langsung
+            </button>
+            <button onclick="window.print()" class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition">
+              <i class="fa-solid fa-print mr-1.5"></i>Print / Save as PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- AREA PREVIEW LAPORAN RESMI YANG AKAN DICETAK KE PDF -->
+        <div id="printableReportArea" class="bg-white p-8 rounded-xl border border-slate-300 shadow-md max-w-5xl mx-auto">
+          <!-- KOP SURAT -->
+          <div class="border-b-4 border-double border-slate-900 pb-4 mb-6 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+              <div class="w-16 h-16 rounded-full bg-blue-950 text-amber-400 flex items-center justify-center text-2xl font-bold border-2 border-amber-500">
+                GK
+              </div>
+              <div>
+                <p class="text-xs font-bold tracking-widest uppercase text-slate-600">Kementerian Keuangan Republik Indonesia</p>
+                <h1 class="text-xl font-extrabold text-slate-900 uppercase">Sekretariat Bersama Gedung Keuangan</h1>
+                <p class="text-xs text-slate-600">Jl. Frans Seda, Gedung Keuangan Negara (GKN) Kupang, Nusa Tenggara Timur</p>
+                <p class="text-xs text-slate-500">Sistem Informasi Kepegawaian Terpadu berbasis Cloud | Portal: gedung-keuangan.cloud</p>
+              </div>
+            </div>
+            <div class="text-right text-xs text-slate-500">
+              <p class="font-semibold text-slate-700">DOKUMEN RESMI</p>
+              <p id="reportDateText">Tanggal: 26 November 2026</p>
+              <p>Kode: LAP-SIMPEG-GK/2026</p>
+            </div>
+          </div>
+
+          <div class="text-center mb-6">
+            <h2 class="text-lg font-bold uppercase underline">Laporan Rekapitulasi Data Pegawai Aparatur Sipil Negara</h2>
+            <p id="reportSubtitle" class="text-xs text-slate-600 mt-1">Unit Kerja: Seluruh Unit Gedung Keuangan</p>
+          </div>
+
+          <!-- RINGKASAN STATISTIK LAPORAN -->
+          <div class="grid grid-cols-4 gap-3 mb-6 text-center">
+            <div class="border border-slate-300 p-2.5 rounded bg-slate-50">
+              <p class="text-[11px] text-slate-500 uppercase">Jumlah Pegawai</p>
+              <p id="repTotal" class="text-lg font-bold text-slate-900">55</p>
+            </div>
+            <div class="border border-slate-300 p-2.5 rounded bg-slate-50">
+              <p class="text-[11px] text-slate-500 uppercase">PNS</p>
+              <p id="repPns" class="text-lg font-bold text-blue-900">44</p>
+            </div>
+            <div class="border border-slate-300 p-2.5 rounded bg-slate-50">
+              <p class="text-[11px] text-slate-500 uppercase">PPPK</p>
+              <p id="repPppk" class="text-lg font-bold text-amber-700">11</p>
+            </div>
+            <div class="border border-slate-300 p-2.5 rounded bg-slate-50">
+              <p class="text-[11px] text-slate-500 uppercase">Total Belanja Gaji</p>
+              <p id="repGaji" class="text-sm font-bold text-emerald-800 mt-1">Rp 0</p>
+            </div>
+          </div>
+
+          <!-- TABEL DATA LAPORAN -->
+          <table class="w-full border-collapse border border-slate-400 text-[11px]">
+            <thead>
+              <tr class="bg-slate-200 text-slate-900">
+                <th class="border border-slate-400 px-2 py-1.5 text-center">No</th>
+                <th class="border border-slate-400 px-2 py-1.5">NIP</th>
+                <th class="border border-slate-400 px-2 py-1.5">Nama Lengkap</th>
+                <th class="border border-slate-400 px-2 py-1.5">Pangkat/Gol</th>
+                <th class="border border-slate-400 px-2 py-1.5">Jabatan</th>
+                <th class="border border-slate-400 px-2 py-1.5">Unit Kerja</th>
+                <th class="border border-slate-400 px-2 py-1.5 text-center">Status</th>
+                <th class="border border-slate-400 px-2 py-1.5 text-right">Total Gaji</th>
+              </tr>
+            </thead>
+            <tbody id="reportTableBody"></tbody>
+          </table>
+
+          <!-- TANDA TANGAN -->
+          <div class="mt-8 flex justify-end">
+            <div class="text-center text-xs w-64">
+              <p>Kupang, <span id="ttdDate">26 November 2026</span></p>
+              <p class="font-semibold">Kepala Bagian Umum & Kepegawaian</p>
+              <p class="text-slate-500">Gedung Keuangan</p>
+              <div class="h-16"></div>
+              <p class="font-bold underline">Drs. Hendra Gunawan, M.Ak.</p>
+              <p class="text-slate-600">NIP. 197605142001121001</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print">
+      &copy; 2026 Aplikasi Sistem Informasi Kepegawaian <strong>Gedung Keuangan</strong> &bull; Deployed on Cloud via GitHub Actions CI/CD
+    </footer>
+  </div>
+
+  <!-- MODAL FORM TAMBAH / EDIT PEGAWAI -->
+  <div id="pegawaiModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center z-40 p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden">
+      <div class="bg-blue-900 text-white px-6 py-4 flex justify-between items-center">
+        <h3 id="modalTitle" class="font-bold text-lg">Tambah Data Pegawai</h3>
+        <button onclick="closeModalPegawai()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <form id="pegawaiForm" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[80vh] overflow-y-auto text-sm">
+        <input type="hidden" id="empId">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">NIP (18 Digit)</label>
+          <input type="text" id="empNip" required maxlength="18" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nama Lengkap & Gelar</label>
+          <input type="text" id="empNama" required class="w-full border border-slate-300 rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Jenis Kelamin</label>
+          <select id="empJk" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+            <option value="Laki-laki">Laki-laki</option>
+            <option value="Perempuan">Perempuan</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Golongan / Pangkat</label>
+          <select id="empGol" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+            <option value="II/c|Pengatur">II/c - Pengatur</option>
+            <option value="II/d|Pengatur Tk. I">II/d - Pengatur Tk. I</option>
+            <option value="III/a|Penata Muda">III/a - Penata Muda</option>
+            <option value="III/b|Penata Muda Tk. I">III/b - Penata Muda Tk. I</option>
+            <option value="III/c|Penata">III/c - Penata</option>
+            <option value="III/d|Penata Tk. I">III/d - Penata Tk. I</option>
+            <option value="IV/a|Pembina">IV/a - Pembina</option>
+            <option value="IV/b|Pembina Tk. I">IV/b - Pembina Tk. I</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Jabatan</label>
+          <input type="text" id="empJabatan" required class="w-full border border-slate-300 rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Unit Kerja</label>
+          <select id="empUnit" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+            <option value="KPP Pratama Kupang">KPP Pratama Kupang</option>
+            <option value="KPPN Kupang">KPPN Kupang</option>
+            <option value="KPKNL Kupang">KPKNL Kupang</option>
+            <option value="Kanwil DJPb Provinsi NTT">Kanwil DJPb Provinsi NTT</option>
+            <option value="Kanwil DJKN Bali dan Nusa Tenggara">Kanwil DJKN Bali dan Nusa Tenggara</option>
+            <option value="KPPBC Tipe Madya Pabean C Kupang">KPPBC Tipe Madya Pabean C Kupang</option>
+            <option value="Sekretariat Bersama Gedung Keuangan">Sekretariat Bersama Gedung Keuangan</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Status Kepegawaian</label>
+          <select id="empStatus" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+            <option value="PNS">PNS</option>
+            <option value="PPPK">PPPK</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Pendidikan Terakhir</label>
+          <input type="text" id="empPendidikan" value="S-1 Akuntansi" required class="w-full border border-slate-300 rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Gaji Pokok (Rp)</label>
+          <input type="number" id="empGaji" value="3026400" required class="w-full border border-slate-300 rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Tunjangan Kinerja (Rp)</label>
+          <input type="number" id="empTunjangan" value="7500000" required class="w-full border border-slate-300 rounded-lg px-3 py-2">
+        </div>
+        <div class="sm:col-span-2 flex justify-end gap-2 pt-3 border-t border-slate-200">
+          <button type="button" onclick="closeModalPegawai()" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100">Batal</button>
+          <button type="submit" class="px-5 py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-white font-semibold">Simpan Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
